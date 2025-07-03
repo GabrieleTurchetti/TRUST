@@ -5,6 +5,11 @@ pragma solidity ^0.8.28;
 import "hardhat/console.sol";
 
 contract Lock {
+    struct SplitMethod {
+        uint splitMethod;
+        mapping(address => uint) splitting;
+    }
+
     struct Node {
         string name;
     }
@@ -56,37 +61,32 @@ contract Lock {
         owner.transfer(address(this).balance);
     }
 
-    function createGroup(
-        string calldata _name,
-        address[] calldata _members
-    ) external {
+    function createGroup(string calldata _name, address[] calldata _members) external {
         require(!groups[_name].exists, "Group already exists");
-        
-        Node[] memory emptyNodes;
-        Edge[] memory emptyEdges;
-        
-        Graph memory emptyGraph = Graph({
-            nodes: emptyNodes,
-            edges: emptyEdges
-        });
-        
-        mapping(address => bool) storage membersMap;
+        Group storage group = groups[_name];
+        group.name = _name;
+        group.exists = true;
 
-        for (uint i = 0; i < _members.lenght; i++) {
-            membersMap[_members[i]] = true;
+        for (uint i = 0; i < _members.length; i++) {
+            group.members[_members[i]] = true;
         }
-
-        groups[_name] = Group({
-            name: _name,
-            members: _members,
-            graph: emptyGraph,
-            exists: true
-        });
     }
 
     function joinGroup(string calldata _name) external {
         require(groups[_name].exists, "Group does not exists");
+        require(!groups[_name].members[msg.sender], "Member already joined");
+        groups[_name].members[msg.sender] = true;
+    }
 
-        groups[_name].members.push(msg.sender);
+    function addExpense(
+        uint amount,
+        string calldata description,
+        uint date,
+        address payer,
+        uint splitMethod,
+        address[] calldata members,
+        uint[] calldata amounts
+    ) external {
+
     }
 }
