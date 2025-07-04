@@ -10,24 +10,31 @@ contract Lock {
         mapping(address => uint) splitting;
     }
 
-    struct Node {
-        string name;
-    }
-
     struct Edge {
-        Node source;
-        Node destination;
+        address source;
+        address destination;
         uint weight;
     }
 
     struct Graph {
-        Node[] nodes;
         Edge[] edges;
+        mapping(address => Edge[]) outgoingEdges;
+        mapping(address => Edge[]) incomingEdges;
+    }
+
+    struct Expense {
+        uint amount;
+        string description;
+        uint date;
+        address payer;
+        uint8 splitMethod;
+        mapping(address => uint) split;
     }
 
     struct Group {
         string name;
         mapping(address => bool) members;
+        Expense[] expenses;
         Graph graph;
         bool exists;
     }
@@ -35,7 +42,7 @@ contract Lock {
     uint public unlockTime;
     address payable public owner;
 
-    mapping (string => Group) public groups;
+    mapping(string => Group) private groups;
 
     event Withdrawal(uint amount, uint when);
 
@@ -72,21 +79,89 @@ contract Lock {
         }
     }
 
-    function joinGroup(string calldata _name) external {
-        require(groups[_name].exists, "Group does not exists");
-        require(!groups[_name].members[msg.sender], "Member already joined");
-        groups[_name].members[msg.sender] = true;
+    function joinGroup(string calldata _groupName) external {
+        require(groups[_groupName].exists, "Group does not exists");
+        require(!groups[_groupName].members[msg.sender], "Member already joined");
+        groups[_groupName].members[msg.sender] = true;
     }
 
     function addExpense(
-        uint amount,
-        string calldata description,
-        uint date,
-        address payer,
-        uint splitMethod,
-        address[] calldata members,
-        uint[] calldata amounts
+        string calldata _groupName,
+        uint _amount,
+        string calldata _description,
+        uint _date,
+        address _payer,
+        uint8 _splitMethod,
+        address[] calldata _members,
+        uint[] calldata _split
     ) external {
+        require(_amount > 0, "Expense amount must be greater than 0");
+        require(_date < block.timestamp, "Date must be before current date");
+        require(_splitMethod >= 0 && _splitMethod <= 3, "Split method not found");
+        require(_members.length > 0, "Member list must be not empty");
+        require(_split.length > 0, "Split lilst must be not empty");
+        
+        if (_splitMethod != 0) {
+        }
 
+        Expense storage expense = groups[_groupName].expenses.push();
+        expense.amount = _amount;
+        expense.description = _description;
+        expense.date = _date;
+        expense.payer = _payer;
+        expense.splitMethod = _splitMethod;
+
+        if (_splitMethod == 0) {
+            uint256 quotient = _amount / _members.length;
+            uint256 rest = _amount % _members.length;
+            
+            for (uint i = 0; i < _members.length; i++) {
+                expense.split[_members[i]] = quotient;
+            }
+
+            for (uint i = 0; i < rest; i++) {
+                expense.split[_members[i]] += 1;
+            }
+        } else if (_splitMethod == 1) {
+            require(_members.length == _split.length, "For this split method the members list and the split list must coincide");
+            uint total = 0;
+
+            for (uint i = 0; i < _split.length; i++) {
+                total += _split[i];
+            }
+
+            require(total == _amount, "Invalid split");
+
+            for (uint i = 0; i < _members.length; i++) {
+                expense.split[_members[i]] = _split[i];
+            }
+        } else if (_splitMethod == 2) {
+            require(_members.length == _split.length, "For this split method the members list and the split list must coincide");
+            uint total = 0;
+
+            for (uint i = 0; i < _split.length; i++) {
+                uint memberAmount = _amount * _split[i] / 100;
+                expense.split[_members[i]] = memberAmount;
+                total += memberAmount;
+            }
+
+            uint rest = _amount - total;
+            uint i = 0;
+
+            while (rest > i) {
+                expense.split[_members[i]] += 1;
+                i++;
+            }
+        }
+
+        // Update group graph
+        for (uint i = 0; i < _members.length; i++) {
+            Edge storage edge = groups[_groupName].graph.edges.push();
+            edge.source = _members[i];
+            edge.destination = _payer;
+            edge.weight = expense.split[_members[i]];
+            groups[_groupName].graph.outgoingEdges[_members[i]].push(edge);
+            groups[_groupName].graph.incomingEdges[_payer].push(edge);
+        }
     }
 }
