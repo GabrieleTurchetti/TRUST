@@ -17,6 +17,7 @@ library GraphLib {
         Node[] nodes;
         Edge[] edges;
         mapping(address => Node) nodesMap;
+        mapping(address => Edge[]) outgoingEdges;
     }
 
     function addEdge(
@@ -31,14 +32,7 @@ library GraphLib {
         edge.weight = weight;
         edge.source.balance -= weight;
         edge.destination.balance += weight;
-    }
-
-    function removeEdge(Graph storage graph, uint index) internal {
-        Edge memory edge = graph.edges[index];
-        edge.source.balance += edge.weight;
-        edge.destination.balance -= edge.weight;
-        graph.edges[index] = graph.edges[graph.edges.length - 1];
-        graph.edges.pop();
+        graph.outgoingEdges[source].push(edge);
     }
 
     function simplifyGraph(Graph storage graph) internal {
@@ -48,6 +42,12 @@ library GraphLib {
 
         for (uint i = 0; i < graph.nodes.length; i++) {
             balances[i] = int(graph.nodes[i].balance);
+
+            Edge[] storage outgoingEdges = graph.outgoingEdges[graph.nodes[i].addr];
+
+            for (uint j = 0; j < outgoingEdges.length; j++) {
+                outgoingEdges.pop();
+            }
         }
 
         for (uint i = 0; i < graph.edges.length; i++) {
