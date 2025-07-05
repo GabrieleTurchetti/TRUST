@@ -68,6 +68,7 @@ contract Lock {
 
         for (uint i = 0; i < members.length; i++) {
             group.members[members[i]] = true;
+            group.graph.nodes.push(GraphLib.Node(members[i], 0));
         }
     }
 
