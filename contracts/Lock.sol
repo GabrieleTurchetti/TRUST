@@ -5,6 +5,7 @@ pragma solidity ^0.8.28;
 import "hardhat/console.sol";
 
 import "./libraries/GraphLib.sol";
+import "./TrustToken.sol";
 
 contract Lock {
     using GraphLib for GraphLib.Graph;
@@ -31,33 +32,11 @@ contract Lock {
         bool exists;
     }
 
-    uint public unlockTime;
-    address payable public owner;
-
     mapping(string => Group) private groups;
+    TrustToken public token;
 
-    event Withdrawal(uint amount, uint when);
-
-    constructor(uint unlockTime) payable {
-        require(
-            block.timestamp < unlockTime,
-            "Unlock time should be in the future"
-        );
-
-        unlockTime = unlockTime;
-        owner = payable(msg.sender);
-    }
-
-    function withdraw() public {
-        // Uncomment this line, and the import of "hardhat/console.sol", to print a log in your terminal
-        console.log("Unlock time is %o and block timestamp is %o", unlockTime, block.timestamp);
-
-        require(block.timestamp >= unlockTime, "You can't withdraw yet");
-        require(msg.sender == owner, "You aren't the owner");
-
-        emit Withdrawal(address(this).balance, block.timestamp);
-
-        owner.transfer(address(this).balance);
+    constructor(address tokenAddress) {
+        token = TrustToken(tokenAddress);
     }
 
     function createGroup(string calldata name, address[] calldata members) external {
@@ -68,7 +47,9 @@ contract Lock {
 
         for (uint i = 0; i < members.length; i++) {
             group.members[members[i]] = true;
-            group.graph.nodes.push(GraphLib.Node(members[i], 0));
+            GraphLib.Node memory node = GraphLib.Node(members[i], 0);
+            group.graph.nodes.push(node);
+            group.graph.nodesMap[members[i]] = node;
         }
     }
 
@@ -93,10 +74,6 @@ contract Lock {
         require(splitMethod >= 0 && splitMethod <= 3, "Split method not found");
         require(members.length > 0, "Member list must be not empty");
         require(split.length > 0, "Split lilst must be not empty");
-        
-        if (splitMethod != 0) {
-        }
-
         Expense storage expense = groups[groupName].expenses.push();
         expense.amount = amount;
         expense.description = description;
@@ -147,9 +124,15 @@ contract Lock {
             }
         }
 
-        // Update group graph
         for (uint i = 0; i < members.length; i++) {
             groups[groupName].graph.addEdge(members[i], payer, expense.split[members[i]]);
         }
+
+        groups[groupName].graph.simplifyGraph();
+    }
+
+    function settleDebt(address creditor, uint amount) external {
+        require(token.transferFrom(msg.sender, creditor, amount), "Token transfer failed");
+        // Update group graph
     }
 }
