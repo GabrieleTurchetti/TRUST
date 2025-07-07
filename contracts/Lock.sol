@@ -48,7 +48,7 @@ contract Lock {
         for (uint i = 0; i < members.length; i++) {
             group.members[members[i]] = true;
             GraphLib.Node memory node = GraphLib.Node(members[i], 0);
-            group.graph.nodes.push(node);
+            group.graph.nodesList.push(node);
             group.graph.nodesMap[members[i]] = node;
         }
     }
@@ -131,8 +131,14 @@ contract Lock {
         groups[groupName].graph.simplifyGraph();
     }
 
-    function settleDebt(address creditor, uint amount) external {
-        require(token.transferFrom(msg.sender, creditor, amount), "Token transfer failed");
-        // Update group graph
+    function settleDebt(string calldata groupName, address receiver, uint amount) external {
+        require(groups[groupName].graph.edgesMap[msg.sender][receiver].exists, "Debt does not exists");
+        uint debt = groups[groupName].graph.edgesMap[msg.sender][receiver].weight;
+        amount = debt < amount ? debt : amount;
+        require(token.transferFrom(msg.sender, receiver, amount), "Token transfer failed");
+
+        if (amount == debt) {
+            groups[groupName].graph.removeEdge(msg.sender, receiver);
+        }
     }
 }

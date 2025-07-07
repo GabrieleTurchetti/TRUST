@@ -11,51 +11,45 @@ library GraphLib {
         Node source;
         Node destination;
         uint weight;
+        bool exists;
     }
 
     struct Graph {
-        Node[] nodes;
-        Edge[] edges;
+        Node[] nodesList;
+        Edge[] edgesList;
         mapping(address => Node) nodesMap;
-        mapping(address => Edge[]) outgoingEdges;
+        mapping(address => mapping(address => Edge)) edgesMap;
     }
 
-    function addEdge(
-        Graph storage graph,
-        address source,
-        address destination,
-        uint weight
-    ) internal {
-        Edge memory edge = graph.edges.push();
+    function addEdge(Graph storage graph, address source, address destination, uint weight) internal {
+        Edge memory edge = graph.edgesList.push();
         edge.source = graph.nodesMap[source];
         edge.destination = graph.nodesMap[destination];
         edge.weight = weight;
         edge.source.balance -= weight;
         edge.destination.balance += weight;
-        graph.outgoingEdges[source].push(edge);
+        graph.edgesMap[source][destination] = edge;
+    }
+
+    function removeEdge(Graph storage graph, address source, address destination) internal {
+        delete graph.edgesMap[source][destination];
+    }
+
+    function updateEdge(Graph storage graph, address source, address destination, uint weight) internal {
+        graph.edgesMap[source][destination].weight = weight;
     }
 
     function simplifyGraph(Graph storage graph) internal {
-        int[] memory balances = new int[](graph.nodes.length);
+        int[] memory balances = new int[](graph.nodesList.length);
         uint indexMin = 0;
         uint indexMax = 0;
 
-        for (uint i = 0; i < graph.nodes.length; i++) {
-            balances[i] = int(graph.nodes[i].balance);
-
-            Edge[] storage outgoingEdges = graph.outgoingEdges[graph.nodes[i].addr];
-
-            for (uint j = 0; j < outgoingEdges.length; j++) {
-                outgoingEdges.pop();
-            }
+        for (uint i = 0; i < graph.nodesList.length; i++) {
+            balances[i] = int(graph.nodesList[i].balance);
         }
 
-        for (uint i = 0; i < graph.edges.length; i++) {
-            graph.edges.pop();
-        }
-
-        for (uint i = 0; i < graph.nodes.length; i++) {
-            for (uint j = 0; j < graph.nodes.length; j++) {
+        for (uint i = 0; i < graph.nodesList.length; i++) {
+            for (uint j = 0; j < graph.nodesList.length; j++) {
                 if (balances[j] < balances[indexMax]) {
                     indexMin = j;
                 }
@@ -63,6 +57,8 @@ library GraphLib {
                 if (balances[j] > balances[indexMax]) {
                     indexMax = j;
                 }
+
+                delete graph.edgesMap[graph.nodesList[i].addr][graph.nodesList[j].addr];
             }
 
             if (balances[indexMin] == 0 && balances[indexMax] == 0) {
@@ -72,8 +68,8 @@ library GraphLib {
             uint newWeight = uint(-balances[indexMin] < balances[indexMax] ? -balances[indexMin] : balances[indexMax]);
             balances[indexMin] += int(newWeight);
             balances[indexMax] -= int(newWeight);
-            Edge memory edge = Edge(graph.nodes[indexMin], graph.nodes[indexMax], newWeight);
-            graph.edges.push(edge);
+            Edge memory edge = Edge(graph.nodesList[indexMin], graph.nodesList[indexMax], newWeight, true);
+            graph.edgesMap[graph.nodesList[indexMin].addr][graph.nodesList[indexMax].addr] = edge;
         }
     }
 }
