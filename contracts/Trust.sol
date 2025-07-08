@@ -7,7 +7,7 @@ import "hardhat/console.sol";
 import "./libraries/GraphLib.sol";
 import "./TrustToken.sol";
 
-contract Lock {
+contract Trust {
     using GraphLib for GraphLib.Graph;
 
     struct SplitMethod {
@@ -116,11 +116,11 @@ contract Lock {
             }
 
             uint rest = amount - total;
-            uint i = 0;
+            uint j = 0;
 
-            while (rest > i) {
-                expense.split[members[i]] += 1;
-                i++;
+            while (rest > j) {
+                expense.split[members[j]] += 1;
+                j++;
             }
         }
 
