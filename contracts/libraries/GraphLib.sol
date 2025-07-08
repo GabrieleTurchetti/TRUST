@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
+import "hardhat/console.sol";
+
 library GraphLib {
     struct Node {
         address addr;
-        uint balance;
+        int balance;
     }
 
     struct Edge {
@@ -26,8 +28,8 @@ library GraphLib {
         edge.source = graph.nodesMap[source];
         edge.destination = graph.nodesMap[destination];
         edge.weight = weight;
-        edge.source.balance -= weight;
-        edge.destination.balance += weight;
+        edge.source.balance -= int(weight);
+        edge.destination.balance += int(weight);
         graph.edgesMap[source][destination] = edge;
     }
 
@@ -43,12 +45,14 @@ library GraphLib {
         int[] memory balances = new int[](graph.nodesList.length);
         uint indexMin = 0;
         uint indexMax = 0;
-
+        console.log("1");
         for (uint i = 0; i < graph.nodesList.length; i++) {
             balances[i] = int(graph.nodesList[i].balance);
         }
+        console.log("2");
 
         for (uint i = 0; i < graph.nodesList.length; i++) {
+            console.log("3");
             for (uint j = 0; j < graph.nodesList.length; j++) {
                 if (balances[j] < balances[indexMax]) {
                     indexMin = j;
@@ -57,13 +61,15 @@ library GraphLib {
                 if (balances[j] > balances[indexMax]) {
                     indexMax = j;
                 }
-
+                console.log("4");
                 delete graph.edgesMap[graph.nodesList[i].addr][graph.nodesList[j].addr];
             }
-
+            console.log("4.1");
             if (balances[indexMin] == 0 && balances[indexMax] == 0) {
+                console.log("ciao:", balances[indexMin] == 0);
                 break;
             }
+            console.log("5");
             
             uint newWeight = uint(-balances[indexMin] < balances[indexMax] ? -balances[indexMin] : balances[indexMax]);
             balances[indexMin] += int(newWeight);

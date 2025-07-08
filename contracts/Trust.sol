@@ -20,7 +20,7 @@ contract Trust {
         string description;
         uint date;
         address payer;
-        uint8 splitMethod;
+        uint splitMethod;
         mapping(address => uint) split;
     }
 
@@ -65,15 +65,17 @@ contract Trust {
         string calldata description,
         uint date,
         address payer,
-        uint8 splitMethod,
+        uint splitMethod,
         address[] calldata members,
         uint[] calldata split
     ) external {
+        if (splitMethod == 0) {
+            console.log("log", splitMethod);
+        }
         require(amount > 0, "Expense amount must be greater than 0");
         require(date < block.timestamp, "Date must be before current date");
         require(splitMethod >= 0 && splitMethod <= 3, "Split method not found");
         require(members.length > 0, "Member list must be not empty");
-        require(split.length > 0, "Split lilst must be not empty");
         Expense storage expense = groups[groupName].expenses.push();
         expense.amount = amount;
         expense.description = description;
@@ -82,8 +84,8 @@ contract Trust {
         expense.splitMethod = splitMethod;
 
         if (splitMethod == 0) {
-            uint256 quotient = amount / members.length;
-            uint256 rest = amount % members.length;
+            uint quotient = amount / members.length;
+            uint rest = amount % members.length;
             
             for (uint i = 0; i < members.length; i++) {
                 expense.split[members[i]] = quotient;
@@ -125,6 +127,7 @@ contract Trust {
         }
 
         for (uint i = 0; i < members.length; i++) {
+            console.log(expense.split[members[i]]);
             groups[groupName].graph.addEdge(members[i], payer, expense.split[members[i]]);
         }
 
