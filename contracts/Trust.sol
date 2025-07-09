@@ -47,9 +47,8 @@ contract Trust {
 
         for (uint i = 0; i < members.length; i++) {
             group.members[members[i]] = true;
-            GraphLib.Node memory node = GraphLib.Node(members[i], 0);
+            GraphLib.Node storage node = group.graph.nodesMap[members[i]];
             group.graph.nodesList.push(node);
-            group.graph.nodesMap[members[i]] = node;
         }
     }
 
@@ -66,16 +65,13 @@ contract Trust {
         uint date,
         address payer,
         uint splitMethod,
-        address[] calldata members,
+        address[] calldata debtors,
         uint[] calldata split
     ) external {
-        if (splitMethod == 0) {
-            console.log("log", splitMethod);
-        }
+        require(debtors.length > 0, "Debtor list must be not empty");
         require(amount > 0, "Expense amount must be greater than 0");
         require(date < block.timestamp, "Date must be before current date");
         require(splitMethod >= 0 && splitMethod <= 3, "Split method not found");
-        require(members.length > 0, "Member list must be not empty");
         Expense storage expense = groups[groupName].expenses.push();
         expense.amount = amount;
         expense.description = description;
@@ -84,18 +80,18 @@ contract Trust {
         expense.splitMethod = splitMethod;
 
         if (splitMethod == 0) {
-            uint quotient = amount / members.length;
-            uint rest = amount % members.length;
+            uint quotient = amount / debtors.length ;
+            uint rest = amount % debtors.length;
             
-            for (uint i = 0; i < members.length; i++) {
-                expense.split[members[i]] = quotient;
+            for (uint i = 0; i < debtors.length; i++) {
+                expense.split[debtors[i]] = quotient;
             }
 
             for (uint i = 0; i < rest; i++) {
-                expense.split[members[i]] += 1;
+                expense.split[debtors[i % debtors.length]] += 1;
             }
         } else if (splitMethod == 1) {
-            require(members.length == split.length, "For this split method the members list and the split list must coincide");
+            require(debtors.length == split.length, "For this split method the debtor list and the split list must have the same length");
             uint total = 0;
 
             for (uint i = 0; i < split.length; i++) {
@@ -104,16 +100,16 @@ contract Trust {
 
             require(total == amount, "Invalid split");
 
-            for (uint i = 0; i < members.length; i++) {
-                expense.split[members[i]] = split[i];
+            for (uint i = 0; i < debtors.length; i++) {
+                expense.split[debtors[i % debtors.length]] = split[i];
             }
         } else if (splitMethod == 2) {
-            require(members.length == split.length, "For this split method the members list and the split list must coincide");
+            require(debtors.length == split.length, "For this split method the debtor list and the split list must have the same length");
             uint total = 0;
 
             for (uint i = 0; i < split.length; i++) {
                 uint memberAmount = amount * split[i] / 100;
-                expense.split[members[i]] = memberAmount;
+                expense.split[debtors[i]] = memberAmount;
                 total += memberAmount;
             }
 
@@ -121,14 +117,13 @@ contract Trust {
             uint j = 0;
 
             while (rest > j) {
-                expense.split[members[j]] += 1;
+                expense.split[debtors[j % debtors.length]] += 1;
                 j++;
             }
         }
 
-        for (uint i = 0; i < members.length; i++) {
-            console.log(expense.split[members[i]]);
-            groups[groupName].graph.addEdge(members[i], payer, expense.split[members[i]]);
+        for (uint i = 0; i < debtors.length; i++) {
+            groups[groupName].graph.addEdge(debtors[i], payer, expense.split[debtors[i]]);
         }
 
         groups[groupName].graph.simplifyGraph();
@@ -139,9 +134,18 @@ contract Trust {
         uint debt = groups[groupName].graph.edgesMap[msg.sender][receiver].weight;
         amount = debt < amount ? debt : amount;
         require(token.transferFrom(msg.sender, receiver, amount), "Token transfer failed");
+        groups[groupName].graph.increaseNodeBalance(msg.sender, amount);
+        groups[groupName].graph.decreaseNodeBalance(receiver, amount);
 
-        if (amount == debt) {
+        if (amount != debt) {
             groups[groupName].graph.removeEdge(msg.sender, receiver);
+            return;
         }
+
+        groups[groupName].graph.updateEdge(msg.sender, receiver, debt - amount);
+    }
+
+    function getBalance(string calldata groupName) external view returns (int) {
+        return groups[groupName].graph.nodesMap[msg.sender].balance;
     }
 }

@@ -99,11 +99,12 @@ describe("Trust Contract", function () {
 
     describe("Equal Split (splitMethod = 0)", function () {
       it("Should add expense with equal split", async function () {
-        const amount: number = 300;
+        const amount: number = 200;
         const description: string = "Dinner";
         const date: number = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
         const payer: string = addr1.address;
         const splitMethod: number = 0;
+        const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = []; // Empty for equal split
 
         await expect(trust.addExpense(
@@ -113,20 +114,20 @@ describe("Trust Contract", function () {
           date,
           payer,
           splitMethod,
-          members,
+          debtors,
           split
         )).to.not.be.reverted;
       });
 
       it("Should handle remainder correctly in equal split", async function () {
-        const amount: number = 100;
+        const amount: number = 300;
         const description: string = "Groceries";
         const date: number = Math.floor(Date.now() / 1000) - 3600;
         const payer: string = addr1.address;
         const splitMethod: number = 0;
+        const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [];
 
-        // Amount 100 split among 3 members = 33, 33, 34
         await expect(trust.addExpense(
           groupName,
           amount,
@@ -134,7 +135,7 @@ describe("Trust Contract", function () {
           date,
           payer,
           splitMethod,
-          members,
+          debtors,
           split
         )).to.not.be.reverted;
       });
@@ -142,12 +143,13 @@ describe("Trust Contract", function () {
 
     describe("Exact Split (splitMethod = 1)", function () {
       it("Should add expense with exact split", async function () {
-        const amount: number = 300;
+        const amount: number = 200;
         const description: string = "Utilities";
         const date: number = Math.floor(Date.now() / 1000) - 3600;
         const payer: string = addr1.address;
         const splitMethod: number = 1;
-        const split: number[] = [100, 100, 100]; // Exact amounts
+        const debtors: string[] = [addr2.address, addr3.address];
+        const split: number[] = [100, 100]; // Exact amounts
 
         await expect(trust.addExpense(
           groupName,
@@ -156,18 +158,19 @@ describe("Trust Contract", function () {
           date,
           payer,
           splitMethod,
-          members,
+          debtors,
           split
         )).to.not.be.reverted;
       });
 
       it("Should reject exact split with incorrect total", async function () {
-        const amount: number = 300;
+        const amount: number = 200;
         const description: string = "Utilities";
         const date: number = Math.floor(Date.now() / 1000) - 3600;
         const payer: string = addr1.address;
         const splitMethod: number = 1;
-        const split: number[] = [100, 100, 50]; // Total = 250, not 300
+        const debtors: string[] = [addr2.address, addr3.address];
+        const split: number[] = [100, 50];
 
         await expect(trust.addExpense(
           groupName,
@@ -176,18 +179,19 @@ describe("Trust Contract", function () {
           date,
           payer,
           splitMethod,
-          members,
+          debtors,
           split
         )).to.be.revertedWith("Invalid split");
       });
 
       it("Should reject exact split with mismatched array lengths", async function () {
-        const amount: number = 300;
+        const amount: number = 200;
         const description: string = "Utilities";
         const date: number = Math.floor(Date.now() / 1000) - 3600;
         const payer: string = addr1.address;
         const splitMethod: number = 1;
-        const split: number[] = [100, 100]; // Only 2 splits for 3 members
+        const debtors: string[] = [addr2.address, addr3.address];
+        const split: number[] = [200]; // Only 1 splits for 2 members
 
         await expect(trust.addExpense(
           groupName,
@@ -196,20 +200,21 @@ describe("Trust Contract", function () {
           date,
           payer,
           splitMethod,
-          members,
+          debtors,
           split
-        )).to.be.revertedWith("For this split method the members list and the split list must coincide");
+        )).to.be.revertedWith("For this split method the debtor list and the split list must have the same length");
       });
     });
 
     describe("Percentage Split (splitMethod = 2)", function () {
       it("Should add expense with percentage split", async function () {
-        const amount: number = 300;
+        const amount: number = 200;
         const description: string = "Rent";
         const date: number = Math.floor(Date.now() / 1000) - 3600;
         const payer: string = addr1.address;
         const splitMethod: number = 2;
-        const split: number[] = [50, 30, 20]; // Percentages
+        const debtors: string[] = [addr2.address, addr3.address];
+        const split: number[] = [80, 20]; // Percentages
 
         await expect(trust.addExpense(
           groupName,
@@ -218,18 +223,19 @@ describe("Trust Contract", function () {
           date,
           payer,
           splitMethod,
-          members,
+          debtors,
           split
         )).to.not.be.reverted;
       });
 
       it("Should handle remainder in percentage split", async function () {
-        const amount: number = 100;
+        const amount: number = 50;
         const description: string = "Coffee";
         const date: number = Math.floor(Date.now() / 1000) - 3600;
         const payer: string = addr1.address;
         const splitMethod: number = 2;
-        const split: number[] = [33, 33, 34]; // Percentages that might cause remainder
+        const debtors: string[] = [addr2.address, addr3.address];
+        const split: number[] = [33, 67]; // Percentages that might cause remainder
 
         await expect(trust.addExpense(
           groupName,
@@ -238,18 +244,19 @@ describe("Trust Contract", function () {
           date,
           payer,
           splitMethod,
-          members,
+          debtors,
           split
         )).to.not.be.reverted;
       });
 
       it("Should reject percentage split with mismatched array lengths", async function () {
-        const amount: number = 300;
+        const amount: number = 200;
         const description: string = "Rent";
         const date: number = Math.floor(Date.now() / 1000) - 3600;
         const payer: string = addr1.address;
         const splitMethod: number = 2;
-        const split: number[] = [50, 30]; // Only 2 percentages for 3 members
+        const debtors: string[] = [addr2.address, addr3.address];
+        const split: number[] = [100];
 
         await expect(trust.addExpense(
           groupName,
@@ -258,9 +265,9 @@ describe("Trust Contract", function () {
           date,
           payer,
           splitMethod,
-          members,
+          debtors,
           split
-        )).to.be.revertedWith("For this split method the members list and the split list must coincide");
+        )).to.be.revertedWith("For this split method the debtor list and the split list must have the same length");
       });
     });
 
@@ -271,6 +278,7 @@ describe("Trust Contract", function () {
         const date: number = Math.floor(Date.now() / 1000) - 3600;
         const payer: string = addr1.address;
         const splitMethod: number = 0;
+        const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [];
 
         await expect(trust.addExpense(
@@ -280,7 +288,7 @@ describe("Trust Contract", function () {
           date,
           payer,
           splitMethod,
-          members,
+          debtors,
           split
         )).to.be.revertedWith("Expense amount must be greater than 0");
       });
@@ -291,6 +299,7 @@ describe("Trust Contract", function () {
         const date: number = Math.floor(Date.now() / 1000) + 3600; // 1 hour in future
         const payer: string = addr1.address;
         const splitMethod: number = 0;
+        const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [];
 
         await expect(trust.addExpense(
@@ -300,7 +309,7 @@ describe("Trust Contract", function () {
           date,
           payer,
           splitMethod,
-          members,
+          debtors,
           split
         )).to.be.revertedWith("Date must be before current date");
       });
@@ -311,6 +320,7 @@ describe("Trust Contract", function () {
         const date: number = Math.floor(Date.now() / 1000) - 3600;
         const payer: string = addr1.address;
         const splitMethod: number = 5; // Invalid split method
+        const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [];
 
         await expect(trust.addExpense(
@@ -320,12 +330,12 @@ describe("Trust Contract", function () {
           date,
           payer,
           splitMethod,
-          members,
+          debtors,
           split
         )).to.be.revertedWith("Split method not found");
       });
 
-      it("Should reject empty member list", async function () {
+      it("Should reject empty debtor list", async function () {
         const amount: number = 100;
         const description: string = "Test";
         const date: number = Math.floor(Date.now() / 1000) - 3600;
@@ -340,29 +350,9 @@ describe("Trust Contract", function () {
           date,
           payer,
           splitMethod,
-          [], // Empty members
+          [],
           split
-        )).to.be.revertedWith("Member list must be not empty");
-      });
-
-      it("Should reject empty split list", async function () {
-        const amount: number = 100;
-        const description: string = "Test";
-        const date: number = Math.floor(Date.now() / 1000) - 3600;
-        const payer: string = addr1.address;
-        const splitMethod: number = 1;
-        const split: number[] = []; // Empty split for exact method
-
-        await expect(trust.addExpense(
-          groupName,
-          amount,
-          description,
-          date,
-          payer,
-          splitMethod,
-          members,
-          split
-        )).to.be.revertedWith("Split lilst must be not empty");
+        )).to.be.revertedWith("Debtor list must be not empty");
       });
     });
   });
@@ -377,11 +367,12 @@ describe("Trust Contract", function () {
       await trust.createGroup(groupName, members);
 
       // Add an expense to create debt
-      const amount: number = 300;
+      const amount: number = 200;
       const description: string = "Shared expense";
       const date: number = Math.floor(Date.now() / 1000) - 3600;
       const payer: string = addr1.address;
       const splitMethod: number = 0;
+      const debtors: string[] = [addr2.address, addr3.address];
       const split: number[] = [];
 
       await trust.addExpense(
@@ -391,28 +382,27 @@ describe("Trust Contract", function () {
         date,
         payer,
         splitMethod,
-        members,
+        debtors,
         split
       );
     });
 
     it("Should settle debt successfully", async function () {
       const receiver: string = addr1.address;
-      const amount: number = 50;
+      const amount: bigint = 50n;
 
       // Get initial balances
       const initialReceiverBalance: bigint = await token.balanceOf(receiver);
       const initialSenderBalance: bigint = await token.balanceOf(addr2.address);
 
-      await expect(trust.connect(addr2).settleDebt(groupName, receiver, amount))
-        .to.not.be.reverted;
+      await expect(trust.connect(addr2).settleDebt(groupName, receiver, amount)).to.not.be.reverted;
 
       // Check balances changed correctly
       const finalReceiverBalance: bigint = await token.balanceOf(receiver);
       const finalSenderBalance: bigint = await token.balanceOf(addr2.address);
 
-      expect(finalReceiverBalance).to.equal(initialReceiverBalance + BigInt(amount));
-      expect(finalSenderBalance).to.equal(initialSenderBalance - BigInt(amount));
+      expect(finalReceiverBalance).to.equal(initialReceiverBalance + amount);
+      expect(finalSenderBalance).to.equal(initialSenderBalance - amount);
     });
 
     it("Should handle partial debt settlement", async function () {
