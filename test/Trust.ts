@@ -409,12 +409,10 @@ describe("Trust Contract", function () {
       const receiver: string = addr1.address;
       const partialAmount: number = 50;
 
-      await expect(trust.connect(addr2).settleDebt(groupName, receiver, partialAmount))
-        .to.not.be.reverted;
+      await expect(trust.connect(addr2).settleDebt(groupName, receiver, partialAmount)).to.not.be.reverted;
 
       // Should be able to settle more debt
-      await expect(trust.connect(addr2).settleDebt(groupName, receiver, partialAmount))
-        .to.not.be.reverted;
+      await expect(trust.connect(addr2).settleDebt(groupName, receiver, partialAmount)).to.not.be.reverted;
     });
 
     it("Should handle settlement amount greater than debt", async function () {

@@ -137,7 +137,7 @@ contract Trust {
         groups[groupName].graph.increaseNodeBalance(msg.sender, amount);
         groups[groupName].graph.decreaseNodeBalance(receiver, amount);
 
-        if (amount != debt) {
+        if (amount == debt) {
             groups[groupName].graph.removeEdge(msg.sender, receiver);
             return;
         }
