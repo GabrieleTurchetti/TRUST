@@ -72,12 +72,17 @@ contract Trust {
         require(amount > 0, "Expense amount must be greater than 0");
         require(date < block.timestamp, "Date must be before current date");
         require(splitMethod >= 0 && splitMethod <= 3, "Split method not found");
+        require(groups[groupName].members[payer], "The member does not exists");
         Expense storage expense = groups[groupName].expenses.push();
         expense.amount = amount;
         expense.description = description;
         expense.date = date;
         expense.payer = payer;
         expense.splitMethod = splitMethod;
+
+        for (uint i = 0; i < debtors.length; i++) {
+            require(groups[groupName].members[debtors[i]], "The member does not exists");
+        }
 
         if (splitMethod == 0) {
             uint quotient = amount / debtors.length ;
@@ -133,16 +138,19 @@ contract Trust {
         require(groups[groupName].graph.edgesMap[msg.sender][receiver].exists, "Debt does not exists");
         uint debt = groups[groupName].graph.edgesMap[msg.sender][receiver].weight;
         amount = debt < amount ? debt : amount;
-        require(token.transferFrom(msg.sender, receiver, amount), "Token transfer failed");
-        groups[groupName].graph.increaseNodeBalance(msg.sender, amount);
-        groups[groupName].graph.decreaseNodeBalance(receiver, amount);
+        try token.transferFrom(msg.sender, receiver, amount){
+            groups[groupName].graph.increaseNodeBalance(msg.sender, amount);
+            groups[groupName].graph.decreaseNodeBalance(receiver, amount);
 
-        if (amount == debt) {
-            groups[groupName].graph.removeEdge(msg.sender, receiver);
-            return;
+            if (amount == debt) {
+                groups[groupName].graph.removeEdge(msg.sender, receiver);
+                return;
+            }
+
+            groups[groupName].graph.updateEdge(msg.sender, receiver, debt - amount);
+        }catch {
+            revert("Tokens transfer failed");
         }
-
-        groups[groupName].graph.updateEdge(msg.sender, receiver, debt - amount);
     }
 
     function getBalance(string calldata groupName) external view returns (int) {

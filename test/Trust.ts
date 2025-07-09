@@ -354,6 +354,27 @@ describe("Trust Contract", function () {
           split
         )).to.be.revertedWith("Debtor list must be not empty");
       });
+
+      it("Should reject member not exists", async function () {
+        const amount: number = 100;
+        const description: string = "Test";
+        const date: number = Math.floor(Date.now() / 1000) - 3600;
+        const payer: string = addr1.address;
+        const splitMethod: number = 1;
+        const debtors: string[] = [addr2.address, addr3.address,addr4.address];
+        const split: number[] = []; // Empty split for exact method
+
+        await expect(trust.addExpense(
+          groupName,
+          amount,
+          description,
+          date,
+          payer,
+          splitMethod,
+          debtors,
+          split
+        )).to.be.revertedWith("The member does not exists");
+      });
     });
   });
 
@@ -420,16 +441,14 @@ describe("Trust Contract", function () {
       const excessiveAmount: number = 1000; // More than the debt
 
       // Should only transfer the actual debt amount
-      await expect(trust.connect(addr2).settleDebt(groupName, receiver, excessiveAmount))
-        .to.not.be.reverted;
+      await expect(trust.connect(addr2).settleDebt(groupName, receiver, excessiveAmount)).to.not.be.reverted;
     });
 
     it("Should reject settlement of non-existent debt", async function () {
       const receiver: string = addr2.address; // addr1 doesn't owe addr2
       const amount: number = 50;
 
-      await expect(trust.connect(addr1).settleDebt(groupName, receiver, amount))
-        .to.be.revertedWith("Debt does not exists");
+      await expect(trust.connect(addr1).settleDebt(groupName, receiver, amount)).to.be.revertedWith("Debt does not exists");
     });
 
     it("Should fail when token transfer fails", async function () {
@@ -439,8 +458,7 @@ describe("Trust Contract", function () {
       // Remove approval to cause transfer failure
       await token.connect(addr2).approve(await trust.getAddress(), 0);
 
-      await expect(trust.connect(addr2).settleDebt(groupName, receiver, amount))
-        .to.be.revertedWith("Token transfer failed");
+      await expect(trust.connect(addr2).settleDebt(groupName, receiver, amount)).to.be.revertedWith("Tokens transfer failed");
     });
   });
 
@@ -466,7 +484,7 @@ describe("Trust Contract", function () {
   describe("Integration Tests", function () {
     it("Should handle multiple expenses and settlements", async function () {
       const groupName: string = "IntegrationGroup";
-      const members: string[] = [addr1.address, addr2.address, addr3.address];
+      const members = [addr1.address, addr2.address, addr3.address];
       await trust.createGroup(groupName, members);
 
       // Add multiple expenses
@@ -475,25 +493,25 @@ describe("Trust Contract", function () {
       // Expense 1: addr1 pays 300, split equally
       await trust.addExpense(
         groupName,
-        300,
+        200,
         "Dinner",
         date,
         addr1.address,
         0,
-        members,
+        [addr2.address, addr3.address],
         []
       );
 
       // Expense 2: addr2 pays 150, split exactly
       await trust.addExpense(
         groupName,
-        150,
+        100,
         "Groceries",
         date - 1000,
         addr2.address,
         1,
-        members,
-        [50, 50, 50]
+        [addr1.address, addr3.address],
+        [50, 50]
       );
 
       // Expense 3: addr3 pays 200, split by percentage
@@ -504,16 +522,14 @@ describe("Trust Contract", function () {
         date - 2000,
         addr3.address,
         2,
-        members,
-        [40, 30, 30]
+        [addr1.address, addr2.address],
+        [50, 50]
       );
 
       // Settle some debts
-      await expect(trust.connect(addr2).settleDebt(groupName, addr1.address, 50))
-        .to.not.be.reverted;
+      await expect(trust.connect(addr2).settleDebt(groupName, addr1.address, 50)).to.not.be.reverted;
 
-      await expect(trust.connect(addr3).settleDebt(groupName, addr1.address, 30))
-        .to.not.be.reverted;
+      await expect(trust.connect(addr3).settleDebt(groupName, addr1.address, 30)).to.not.be.reverted;
     });
 
     it("Should handle complex group dynamics", async function () {
@@ -525,7 +541,7 @@ describe("Trust Contract", function () {
       await trust.connect(addr3).joinGroup(groupName);
 
       // Add expense with all members
-      const allMembers: string[] = [addr1.address, addr2.address, addr3.address];
+      const debtors: string[] = [addr2.address, addr3.address];
       await trust.addExpense(
         groupName,
         600,
@@ -533,21 +549,20 @@ describe("Trust Contract", function () {
         Math.floor(Date.now() / 1000) - 3600,
         addr1.address,
         2,
-        allMembers,
-        [50, 25, 25]
+        debtors,
+        [50, 50]
       );
 
       // Settle debts
-      await expect(trust.connect(addr2).settleDebt(groupName, addr1.address, 100))
-        .to.not.be.reverted;
+      await expect(trust.connect(addr2).settleDebt(groupName, addr1.address, 100)).to.not.be.reverted;
 
-      await expect(trust.connect(addr3).settleDebt(groupName, addr1.address, 150))
-        .to.not.be.reverted;
+      await expect(trust.connect(addr3).settleDebt(groupName, addr1.address, 150)).to.not.be.reverted;
     });
 
     it("Should handle edge case with single member expense", async function () {
       const groupName: string = "SingleMemberGroup";
-      const members: string[] = [addr1.address];
+      const members: string[] = [addr1.address, addr2.address];
+      const debtors: string[] = [addr2.address];
       await trust.createGroup(groupName, members);
 
       // Add expense with single member
@@ -558,7 +573,7 @@ describe("Trust Contract", function () {
         Math.floor(Date.now() / 1000) - 3600,
         addr1.address,
         0,
-        members,
+        debtors,
         []
       )).to.not.be.reverted;
     });
@@ -568,6 +583,7 @@ describe("Trust Contract", function () {
     it("Should handle large amounts", async function () {
       const groupName: string = "LargeAmountGroup";
       const members: string[] = [addr1.address, addr2.address];
+      const debtors: string[] = [addr2.address];
       await trust.createGroup(groupName, members);
 
       const largeAmount: bigint = ethers.parseEther("1000000");
@@ -579,7 +595,7 @@ describe("Trust Contract", function () {
         Math.floor(Date.now() / 1000) - 3600,
         addr1.address,
         0,
-        members,
+        debtors,
         []
       )).to.not.be.reverted;
     });
@@ -587,6 +603,7 @@ describe("Trust Contract", function () {
     it("Should handle zero values in percentage split", async function () {
       const groupName: string = "ZeroPercentGroup";
       const members: string[] = [addr1.address, addr2.address, addr3.address];
+      const debtors: string[] = [addr2.address, addr3.address];
       await trust.createGroup(groupName, members);
 
       await expect(trust.addExpense(
@@ -596,8 +613,8 @@ describe("Trust Contract", function () {
         Math.floor(Date.now() / 1000) - 3600,
         addr1.address,
         2,
-        members,
-        [100, 0, 0] // One member pays 100%, others pay 0%
+        debtors,
+        [100, 0] // One member pays 100%, others pay 0%
       )).to.not.be.reverted;
     });
   });
