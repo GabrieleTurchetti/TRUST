@@ -32,22 +32,6 @@ library GraphLib {
         graph.nodes[destination].balance += int(weight);
     }
 
-    function removeEdge(Graph storage graph, address source, address destination) internal {
-        delete graph.edges[source][destination];
-    }
-
-    function updateEdge(Graph storage graph, address source, address destination, uint weight) internal {
-        graph.edges[source][destination].weight = weight;
-    }
-
-    function increaseNodeBalance(Graph storage graph, address addr, uint amount) internal {
-        graph.nodes[addr].balance += int(amount);
-    }
-
-    function decreaseNodeBalance(Graph storage graph, address addr, uint amount) internal {
-        graph.nodes[addr].balance -= int(amount);
-    }
-
     function simplifyGraph(Graph storage graph) internal {
         int[] memory balances = new int[](graph.nodeAddresses.length);
         uint indexMin = 0;

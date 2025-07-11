@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
-// Uncomment this line to use console.log
 import "hardhat/console.sol";
-
 import "./libraries/GraphLib.sol";
 import "./TrustToken.sol";
 
 contract Trust {
     using GraphLib for GraphLib.Graph;
+
+    struct Member {
+        bool exists;
+    }
 
     struct SplitMethod {
         uint splitMethod;
@@ -26,7 +28,7 @@ contract Trust {
 
     struct Group {
         string name;
-        mapping(address => bool) members;
+        mapping(address => Member) members;
         Expense[] expenses;
         GraphLib.Graph graph;
         bool exists;
@@ -40,21 +42,22 @@ contract Trust {
     }
 
     function createGroup(string calldata name, address[] calldata members) external {
-        require(!groups[name].exists, "Group already exists");
         Group storage group = groups[name];
+        require(!group.exists, "Group already exists");
         group.name = name;
         group.exists = true;
 
         for (uint i = 0; i < members.length; i++) {
-            group.members[members[i]] = true;
+            group.members[members[i]].exists = true;
             group.graph.nodeAddresses.push(members[i]);
         }
     }
 
     function joinGroup(string calldata groupName) external {
-        require(groups[groupName].exists, "Group does not exists");
-        require(!groups[groupName].members[msg.sender], "Member already joined");
-        groups[groupName].members[msg.sender] = true;
+        Group storage group = groups[groupName];
+        require(group.exists, "Group does not exists");
+        require(!group.members[msg.sender].exists, "Member already joined");
+        group.members[msg.sender].exists = true;
     }
 
     function addExpense(
@@ -62,32 +65,29 @@ contract Trust {
         uint amount,
         string calldata description,
         uint date,
-
         address payer,
         uint splitMethod,
         address[] calldata debtors,
         uint[] calldata split
     ) external {
+        Group storage group = groups[groupName];
         require(debtors.length > 0, "Debtor list must be not empty");
         require(amount > 0, "Expense amount must be greater than 0");
-        console.log("Date: ", date);
-        console.log("Date: ", block.timestamp);
-        require(date < block.timestamp, "Specified date must be before current date");
+        require(date <= block.timestamp, "Specified date must be before current date");
         require(splitMethod >= 0 && splitMethod <= 3, "Split method not found");
-        require(groups[groupName].members[payer], "The member does not exists");
-        Expense storage expense = groups[groupName].expenses.push();
+        require(group.members[payer].exists, "The payer does not exists");
+        Expense storage expense = group.expenses.push();
         expense.amount = amount;
         expense.description = description;
         expense.date = date;
         expense.payer = payer;
         expense.splitMethod = splitMethod;
-        Group storage group = groups[groupName];
 
         for (uint i = 0; i < debtors.length; i++) {
-            require(group.members[debtors[i]], "The member does not exists");
+            require(group.members[debtors[i]].exists, "A debtor does not exists");
         }
 
-        if (splitMethod == 0) {
+        if (splitMethod == 0) { // Equal split
             uint quotient = amount / debtors.length ;
             uint rest = amount % debtors.length;
             
@@ -98,7 +98,7 @@ contract Trust {
             for (uint i = 0; i < rest; i++) {
                 expense.split[debtors[i % debtors.length]] += 1;
             }
-        } else if (splitMethod == 1) {
+        } else if (splitMethod == 1) { // Split by amount
             require(debtors.length == split.length, "For this split method the debtor list and the split list must have the same length");
             uint total = 0;
 
@@ -111,7 +111,7 @@ contract Trust {
             for (uint i = 0; i < debtors.length; i++) {
                 expense.split[debtors[i % debtors.length]] = split[i];
             }
-        } else if (splitMethod == 2) {
+        } else if (splitMethod == 2) { // Split by percentage
             require(debtors.length == split.length, "For this split method the debtor list and the split list must have the same length");
             uint total = 0;
 
@@ -138,25 +138,23 @@ contract Trust {
     }
 
     function settleDebt(string calldata groupName, address receiver, uint amount) external {
-        require(groups[groupName].graph.edges[msg.sender][receiver].exists, "Debt does not exists");
-        uint debt = groups[groupName].graph.edges[msg.sender][receiver].weight;
+        Group storage group = groups[groupName];
+        require(group.graph.edges[msg.sender][receiver].exists, "Debt does not exists");
+        uint debt = group.graph.edges[msg.sender][receiver].weight;
         amount = debt < amount ? debt : amount;
+        
         try token.transferFrom(msg.sender, receiver, amount){
-            groups[groupName].graph.increaseNodeBalance(msg.sender, amount);
-            groups[groupName].graph.decreaseNodeBalance(receiver, amount);
+            group.graph.nodes[msg.sender].balance += int(amount);
+            group.graph.nodes[receiver].balance -= int(amount);
 
             if (amount == debt) {
-                groups[groupName].graph.removeEdge(msg.sender, receiver);
+                delete group.graph.edges[msg.sender][receiver];
                 return;
             }
 
-            groups[groupName].graph.updateEdge(msg.sender, receiver, debt - amount);
+            group.graph.edges[msg.sender][receiver].weight = debt - amount;
         } catch {
             revert("Tokens transfer failed");
         }
-    }
-
-    function getBalance(string calldata groupName) external view returns (int) {
-        return groups[groupName].graph.nodes[msg.sender].balance;
     }
 }
