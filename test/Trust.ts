@@ -296,7 +296,8 @@ describe("Trust Contract", function () {
       it("Should reject future date", async function () {
         const amount: number = 100;
         const description: string = "Test";
-        const date: number = Math.floor(Date.now() / 1000) + 3600; // 1 hour in future
+        const currentBlock = await ethers.provider.getBlock('latest');
+        const date: number = currentBlock!.timestamp + 3600;
         const payer: string = addr1.address;
         const splitMethod: number = 0;
         const debtors: string[] = [addr2.address, addr3.address];
@@ -311,7 +312,7 @@ describe("Trust Contract", function () {
           splitMethod,
           debtors,
           split
-        )).to.be.revertedWith("Date must be before current date");
+        )).to.be.revertedWith("Specified date must be before current date");
       });
 
       it("Should reject invalid split method", async function () {
@@ -529,7 +530,7 @@ describe("Trust Contract", function () {
       // Settle some debts
       await expect(trust.connect(addr2).settleDebt(groupName, addr1.address, 50)).to.not.be.reverted;
 
-      await expect(trust.connect(addr3).settleDebt(groupName, addr1.address, 30)).to.not.be.reverted;
+      await expect(trust.connect(addr2).settleDebt(groupName, addr3.address, 30)).to.not.be.reverted;
     });
 
     it("Should handle complex group dynamics", async function () {

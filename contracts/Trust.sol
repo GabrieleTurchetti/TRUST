@@ -47,8 +47,7 @@ contract Trust {
 
         for (uint i = 0; i < members.length; i++) {
             group.members[members[i]] = true;
-            GraphLib.Node storage node = group.graph.nodesMap[members[i]];
-            group.graph.nodesList.push(node);
+            group.graph.nodeAddresses.push(members[i]);
         }
     }
 
@@ -63,6 +62,7 @@ contract Trust {
         uint amount,
         string calldata description,
         uint date,
+
         address payer,
         uint splitMethod,
         address[] calldata debtors,
@@ -70,7 +70,9 @@ contract Trust {
     ) external {
         require(debtors.length > 0, "Debtor list must be not empty");
         require(amount > 0, "Expense amount must be greater than 0");
-        require(date < block.timestamp, "Date must be before current date");
+        console.log("Date: ", date);
+        console.log("Date: ", block.timestamp);
+        require(date < block.timestamp, "Specified date must be before current date");
         require(splitMethod >= 0 && splitMethod <= 3, "Split method not found");
         require(groups[groupName].members[payer], "The member does not exists");
         Expense storage expense = groups[groupName].expenses.push();
@@ -79,9 +81,10 @@ contract Trust {
         expense.date = date;
         expense.payer = payer;
         expense.splitMethod = splitMethod;
+        Group storage group = groups[groupName];
 
         for (uint i = 0; i < debtors.length; i++) {
-            require(groups[groupName].members[debtors[i]], "The member does not exists");
+            require(group.members[debtors[i]], "The member does not exists");
         }
 
         if (splitMethod == 0) {
@@ -128,15 +131,15 @@ contract Trust {
         }
 
         for (uint i = 0; i < debtors.length; i++) {
-            groups[groupName].graph.addEdge(debtors[i], payer, expense.split[debtors[i]]);
+            group.graph.addEdge(debtors[i], payer, expense.split[debtors[i]]);
         }
 
-        groups[groupName].graph.simplifyGraph();
+        group.graph.simplifyGraph();
     }
 
     function settleDebt(string calldata groupName, address receiver, uint amount) external {
-        require(groups[groupName].graph.edgesMap[msg.sender][receiver].exists, "Debt does not exists");
-        uint debt = groups[groupName].graph.edgesMap[msg.sender][receiver].weight;
+        require(groups[groupName].graph.edges[msg.sender][receiver].exists, "Debt does not exists");
+        uint debt = groups[groupName].graph.edges[msg.sender][receiver].weight;
         amount = debt < amount ? debt : amount;
         try token.transferFrom(msg.sender, receiver, amount){
             groups[groupName].graph.increaseNodeBalance(msg.sender, amount);
@@ -148,12 +151,12 @@ contract Trust {
             }
 
             groups[groupName].graph.updateEdge(msg.sender, receiver, debt - amount);
-        }catch {
+        } catch {
             revert("Tokens transfer failed");
         }
     }
 
     function getBalance(string calldata groupName) external view returns (int) {
-        return groups[groupName].graph.nodesMap[msg.sender].balance;
+        return groups[groupName].graph.nodes[msg.sender].balance;
     }
 }

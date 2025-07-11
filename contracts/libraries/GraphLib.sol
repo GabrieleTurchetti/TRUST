@@ -17,57 +17,60 @@ library GraphLib {
     }
 
     struct Graph {
-        Node[] nodesList;
-        mapping(address => Node) nodesMap;
-        mapping(address => mapping(address => Edge)) edgesMap;
+        address[] nodeAddresses;
+        mapping(address => Node) nodes;
+        mapping(address => mapping(address => Edge)) edges;
     }
 
     function addEdge(Graph storage graph, address source, address destination, uint weight) internal {
-        Edge storage edge = graph.edgesMap[source][destination];
-        edge.source = graph.nodesMap[source].addr;
-        edge.destination = graph.nodesMap[destination].addr;
+        Edge storage edge = graph.edges[source][destination];
+        edge.source = graph.nodes[source].addr;
+        edge.destination = graph.nodes[destination].addr;
         edge.weight = weight;
         edge.exists = true;
-        graph.nodesMap[source].balance -= int(weight);
-        graph.nodesMap[destination].balance += int(weight);
+        graph.nodes[source].balance -= int(weight);
+        graph.nodes[destination].balance += int(weight);
     }
 
     function removeEdge(Graph storage graph, address source, address destination) internal {
-        delete graph.edgesMap[source][destination];
+        delete graph.edges[source][destination];
     }
 
     function updateEdge(Graph storage graph, address source, address destination, uint weight) internal {
-        graph.edgesMap[source][destination].weight = weight;
+        graph.edges[source][destination].weight = weight;
     }
 
     function increaseNodeBalance(Graph storage graph, address addr, uint amount) internal {
-        graph.nodesMap[addr].balance += int(amount);
+        graph.nodes[addr].balance += int(amount);
     }
 
     function decreaseNodeBalance(Graph storage graph, address addr, uint amount) internal {
-        graph.nodesMap[addr].balance -= int(amount);
+        graph.nodes[addr].balance -= int(amount);
     }
 
     function simplifyGraph(Graph storage graph) internal {
-        int[] memory balances = new int[](graph.nodesList.length);
+        int[] memory balances = new int[](graph.nodeAddresses.length);
         uint indexMin = 0;
         uint indexMax = 0;
 
-        for (uint i = 0; i < graph.nodesList.length; i++) {
-            balances[i] = int(graph.nodesList[i].balance);
+        for (uint i = 0; i < graph.nodeAddresses.length; i++) {
+            balances[i] = graph.nodes[graph.nodeAddresses[i]].balance;
+
+            for (uint j = 0; j < graph.nodeAddresses.length; j++) {
+                delete graph.edges[graph.nodeAddresses[i]][graph.nodeAddresses[j]];
+            }
         }
 
-        for (uint i = 0; i < graph.nodesList.length; i++) {
-            for (uint j = 0; j < graph.nodesList.length; j++) {
-                if (balances[j] < balances[indexMax]) {
+
+        for (uint i = 0; i < graph.nodeAddresses.length; i++) {
+            for (uint j = 0; j < graph.nodeAddresses.length; j++) {
+                if (balances[j] < balances[indexMin]) {
                     indexMin = j;
                 }
 
                 if (balances[j] > balances[indexMax]) {
                     indexMax = j;
                 }
-
-                delete graph.edgesMap[graph.nodesList[i].addr][graph.nodesList[j].addr];
             }
 
             if (balances[indexMin] == 0 && balances[indexMax] == 0) {
@@ -77,9 +80,9 @@ library GraphLib {
             uint weight = uint(-balances[indexMin] < balances[indexMax] ? -balances[indexMin] : balances[indexMax]);
             balances[indexMin] += int(weight);
             balances[indexMax] -= int(weight);
-            Edge memory edge = graph.edgesMap[graph.nodesList[indexMin].addr][graph.nodesList[indexMax].addr];
-            edge.source = graph.nodesList[indexMin].addr;
-            edge.destination = graph.nodesList[indexMax].addr;
+            Edge storage edge = graph.edges[graph.nodeAddresses[indexMin]][graph.nodeAddresses[indexMax]];
+            edge.source = graph.nodeAddresses[indexMin];
+            edge.destination = graph.nodeAddresses[indexMax];
             edge.weight = weight;
             edge.exists = true;
         }
