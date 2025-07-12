@@ -1,8 +1,3 @@
-# Start the localhost node
-# npx hardhat node
-
-sleep 1
-
 # Compile the smart contracts
 npx hardhat compile --network localhost
 

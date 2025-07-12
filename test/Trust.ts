@@ -90,7 +90,7 @@ describe("Trust Contract", function () {
         const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -111,7 +111,7 @@ describe("Trust Contract", function () {
         const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -134,7 +134,7 @@ describe("Trust Contract", function () {
         const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [100, 100];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -155,7 +155,7 @@ describe("Trust Contract", function () {
         const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [100, 50];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -176,7 +176,7 @@ describe("Trust Contract", function () {
         const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [200];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -199,7 +199,7 @@ describe("Trust Contract", function () {
         const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [80, 20];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -220,7 +220,7 @@ describe("Trust Contract", function () {
         const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [33, 67];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -241,7 +241,7 @@ describe("Trust Contract", function () {
         const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [100];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -264,7 +264,7 @@ describe("Trust Contract", function () {
         const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -285,7 +285,7 @@ describe("Trust Contract", function () {
         const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -306,7 +306,7 @@ describe("Trust Contract", function () {
         const debtors: string[] = [addr2.address, addr3.address];
         const split: number[] = [];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -326,7 +326,7 @@ describe("Trust Contract", function () {
         const splitMethod: number = 0;
         const split: number[] = [];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -347,7 +347,7 @@ describe("Trust Contract", function () {
         const debtors: string[] = [addr2.address, addr3.address,addr4.address];
         const split: number[] = [];
 
-        await expect(trust.addExpense(
+        await expect(trust.connect(addr1).addExpense(
           groupName,
           amount,
           description,
@@ -377,7 +377,7 @@ describe("Trust Contract", function () {
       const debtors: string[] = [addr2.address, addr3.address];
       const split: number[] = [];
 
-      await trust.addExpense(
+      await trust.connect(addr1).addExpense(
         groupName,
         amount,
         description,
@@ -424,7 +424,7 @@ describe("Trust Contract", function () {
       const receiver: string = addr1.address;
       const amount: number = 50;
       await token.connect(addr2).approve(await trust.getAddress(), 0);
-      await expect(trust.connect(addr2).settleDebt(groupName, receiver, amount)).to.be.revertedWith("Tokens transfer failed");
+      await expect(trust.connect(addr2).settleDebt(groupName, receiver, amount)).to.be.revertedWith("Insufficient allowance");
     });
   });
 
@@ -454,7 +454,7 @@ describe("Trust Contract", function () {
       await trust.createGroup(groupName, members);
       const date: number = currentTimestamp - 3600;
 
-      await trust.addExpense(
+      await trust.connect(addr1).addExpense(
         groupName,
         200,
         "Dinner",
@@ -465,7 +465,7 @@ describe("Trust Contract", function () {
         []
       );
 
-      await trust.addExpense(
+      await trust.connect(addr1).addExpense(
         groupName,
         100,
         "Groceries",
@@ -476,7 +476,7 @@ describe("Trust Contract", function () {
         [50, 50]
       );
 
-      await trust.addExpense(
+      await trust.connect(addr1).addExpense(
         groupName,
         200,
         "Utilities",
@@ -498,7 +498,7 @@ describe("Trust Contract", function () {
       await trust.connect(addr3).joinGroup(groupName);
       const debtors: string[] = [addr2.address, addr3.address];
 
-      await trust.addExpense(
+      await trust.connect(addr1).addExpense(
         groupName,
         600,
         "Trip",
@@ -519,7 +519,7 @@ describe("Trust Contract", function () {
       const debtors: string[] = [addr2.address];
       await trust.createGroup(groupName, members);
 
-      await expect(trust.addExpense(
+      await expect(trust.connect(addr1).addExpense(
         groupName,
         100,
         "Solo expense",
@@ -540,7 +540,7 @@ describe("Trust Contract", function () {
       await trust.createGroup(groupName, members);
       const largeAmount: bigint = ethers.parseEther("1000000");
       
-      await expect(trust.addExpense(
+      await expect(trust.connect(addr1).addExpense(
         groupName,
         largeAmount,
         "Large expense",
@@ -558,7 +558,7 @@ describe("Trust Contract", function () {
       const debtors: string[] = [addr2.address, addr3.address];
       await trust.createGroup(groupName, members);
 
-      await expect(trust.addExpense(
+      await expect(trust.connect(addr1).addExpense(
         groupName,
         300,
         "Zero percent test",

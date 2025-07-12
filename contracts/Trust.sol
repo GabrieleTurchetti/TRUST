@@ -12,11 +12,6 @@ contract Trust {
         bool exists;
     }
 
-    struct SplitMethod {
-        uint splitMethod;
-        mapping(address => uint) splitting;
-    }
-
     struct Expense {
         uint amount;
         string description;
@@ -71,6 +66,7 @@ contract Trust {
         uint[] calldata split
     ) external {
         Group storage group = groups[groupName];
+        require(group.members[msg.sender].exists, "The sender is not in the group");
         require(debtors.length > 0, "Debtor list must be not empty");
         require(amount > 0, "Expense amount must be greater than 0");
         require(date <= block.timestamp, "Specified date must be before current date");
@@ -142,19 +138,17 @@ contract Trust {
         require(group.graph.edges[msg.sender][receiver].exists, "Debt does not exists");
         uint debt = group.graph.edges[msg.sender][receiver].weight;
         amount = debt < amount ? debt : amount;
+        require(token.balanceOf(msg.sender) >= amount, "Insufficient token balance");
+        require(token.allowance(msg.sender, address(this)) >= amount, "Insufficient allowance");
+        group.graph.nodes[msg.sender].balance += int(amount);
+        group.graph.nodes[receiver].balance -= int(amount);
         
-        try token.transferFrom(msg.sender, receiver, amount){
-            group.graph.nodes[msg.sender].balance += int(amount);
-            group.graph.nodes[receiver].balance -= int(amount);
-
-            if (amount == debt) {
-                delete group.graph.edges[msg.sender][receiver];
-                return;
-            }
-
+        if (amount == debt) {
+            delete group.graph.edges[msg.sender][receiver];
+        } else {
             group.graph.edges[msg.sender][receiver].weight = debt - amount;
-        } catch {
-            revert("Tokens transfer failed");
         }
+        
+        token.transferFrom(msg.sender, receiver, amount);
     }
 }

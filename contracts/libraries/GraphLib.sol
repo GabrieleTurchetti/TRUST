@@ -57,7 +57,7 @@ library GraphLib {
                 }
             }
 
-            if (balances[indexMin] == 0 && balances[indexMax] == 0) {
+            if (balances[i] == 0) {
                 break;
             }
             
