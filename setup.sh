@@ -9,4 +9,4 @@ npx hardhat ignition deploy ./ignition/modules/Trust.ts --network localhost
 sleep 1
 
 # Executes all the tests
-npx hardhat test --network localhost
+npx hardhat test test/Trust.ts --network localhost

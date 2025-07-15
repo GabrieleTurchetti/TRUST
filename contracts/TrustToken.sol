@@ -9,7 +9,7 @@ contract TrustToken is ERC20 {
     constructor() ERC20("TrustToken", "TRST") {}
 
     function mint() external payable {
-        require(msg.value > 0, "You must provide ETH to mint tokens");
+        require(msg.value > 0, "Insufficient ETH");
         uint tokens = msg.value * RATE;
         _mint(msg.sender, tokens);
     }

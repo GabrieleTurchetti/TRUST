@@ -36,6 +36,7 @@ library GraphLib {
         int[] memory balances = new int[](graph.nodeAddresses.length);
         uint indexMin = 0;
         uint indexMax = 0;
+        bool areAllZeros;
 
         for (uint i = 0; i < graph.nodeAddresses.length; i++) {
             balances[i] = graph.nodes[graph.nodeAddresses[i]].balance;
@@ -47,6 +48,8 @@ library GraphLib {
 
 
         for (uint i = 0; i < graph.nodeAddresses.length; i++) {
+            areAllZeros = true;
+
             for (uint j = 0; j < graph.nodeAddresses.length; j++) {
                 if (balances[j] < balances[indexMin]) {
                     indexMin = j;
@@ -55,9 +58,13 @@ library GraphLib {
                 if (balances[j] > balances[indexMax]) {
                     indexMax = j;
                 }
+
+                if (balances[j] != 0) {
+                    areAllZeros = false;
+                } 
             }
 
-            if (balances[i] == 0) {
+            if (areAllZeros) {
                 break;
             }
             

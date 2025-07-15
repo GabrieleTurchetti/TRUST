@@ -48,7 +48,7 @@ describe("Trust Contract", function () {
       const groupName: string = "TestGroup";
       const members: string[] = [addr1.address, addr2.address];
       await trust.createGroup(groupName, members);
-      await expect(trust.createGroup(groupName, members)).to.be.revertedWith("Group already exists");
+      await expect(trust.createGroup(groupName, members)).to.be.revertedWith("Group already exist");
     });
 
     it("Should allow user to join an existing group", async function () {
@@ -59,7 +59,7 @@ describe("Trust Contract", function () {
     });
 
     it("Should not allow user to join non-existent group", async function () {
-      await expect(trust.connect(addr1).joinGroup("NonExistentGroup")).to.be.revertedWith("Group does not exists");
+      await expect(trust.connect(addr1).joinGroup("NonExistentGroup")).to.be.revertedWith("Group does not exist");
     });
 
     it("Should not allow user to join group twice", async function () {
@@ -338,7 +338,7 @@ describe("Trust Contract", function () {
         )).to.be.revertedWith("Debtor list must be not empty");
       });
 
-      it("Should reject debtor not exists", async function () {
+      it("Should reject debtor not exist", async function () {
         const amount: number = 100;
         const description: string = "Test";
         const date: number = currentTimestamp - 3600;
@@ -356,7 +356,7 @@ describe("Trust Contract", function () {
           splitMethod,
           debtors,
           split
-        )).to.be.revertedWith("A debtor does not exists");
+        )).to.be.revertedWith("A debtor does not exist");
       });
     });
   });
@@ -417,7 +417,7 @@ describe("Trust Contract", function () {
     it("Should reject settlement of non-existent debt", async function () {
       const receiver: string = addr2.address;
       const amount: number = 50;
-      await expect(trust.connect(addr1).settleDebt(groupName, receiver, amount)).to.be.revertedWith("Debt does not exists");
+      await expect(trust.connect(addr1).settleDebt(groupName, receiver, amount)).to.be.revertedWith("Debt does not exist");
     });
 
     it("Should fail when token transfer fails", async function () {
@@ -560,7 +560,7 @@ describe("Trust Contract", function () {
 
       await expect(trust.connect(addr1).addExpense(
         groupName,
-        300,
+        200,
         "Zero percent test",
         Math.floor(Date.now() / 1000) - 3600,
         addr1.address,
