@@ -87,7 +87,7 @@ contract Trust {
         require(!group.members[msg.sender].exists, "Member already joined");
 
         group.members[msg.sender].exists = true;
-        
+
         emit MemberJoined(groupName, msg.sender);
     }
 
