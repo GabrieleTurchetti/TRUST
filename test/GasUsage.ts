@@ -402,9 +402,88 @@ describe("Trust Contract - Gas Usage Analysis", function () {
         });
     });
 
+    describe("TrustToken Gas Usage", function () {
+        it("Should measure gas for TrustToken mint with different ETH amounts", async function () {
+            const ethAmounts = [
+                ethers.parseEther("0.001"),
+                ethers.parseEther("0.01"),
+                ethers.parseEther("0.1"),
+                ethers.parseEther("1"),
+                ethers.parseEther("10")
+            ];
+            
+            for (const ethAmount of ethAmounts) {
+                const tx = await token.connect(addr1).mint({ value: ethAmount });
+                const receipt = await tx.wait();
+                const gasUsed = Number(receipt!.gasUsed);
+                trackGasUsage(`trustToken_mint_${ethers.formatEther(ethAmount)}_ETH`, gasUsed);
+                console.log(`Mint with ${ethers.formatEther(ethAmount)} ETH: ${gasUsed} gas`);
+            }
+        });
+        
+        it("Should measure gas for multiple mint operations", async function () {
+            const ethAmount = ethers.parseEther("0.1");
+            
+            for (let i = 0; i < 5; i++) {
+                const tx = await token.connect(addr1).mint({ value: ethAmount });
+                const receipt = await tx.wait();
+                const gasUsed = Number(receipt!.gasUsed);
+                trackGasUsage(`trustToken_mint_sequence_${i + 1}`, gasUsed);
+                console.log(`Sequential mint ${i + 1}: ${gasUsed} gas`);
+            }
+        });
+        
+        it("Should measure gas for mint by different addresses", async function () {
+            const ethAmount = ethers.parseEther("0.1");
+            const addresses = [addr1, addr2, addr3, addr4, addr5];
+            
+            for (let i = 0; i < addresses.length; i++) {
+                const tx = await token.connect(addresses[i]).mint({ value: ethAmount });
+                const receipt = await tx.wait();
+                const gasUsed = Number(receipt!.gasUsed);
+                trackGasUsage(`trustToken_mint_new_address_${i + 1}`, gasUsed);
+                console.log(`First mint for address ${i + 1}: ${gasUsed} gas`);
+            }
+        });
+        
+        it("Should measure gas for token operations", async function () {
+            const ethAmount = ethers.parseEther("1");
+            await token.connect(addr1).mint({ value: ethAmount });
+            const balance = await token.balanceOf(addr1.address);
+            console.log(`Token balance query result: ${ethers.formatEther(balance)} tokens`);
+            const transferAmount = ethers.parseEther("500");
+            const transferTx = await token.connect(addr1).transfer(addr2.address, transferAmount);
+            const transferReceipt = await transferTx.wait();
+            const transferGasUsed = Number(transferReceipt!.gasUsed);
+            trackGasUsage("trustToken_transfer", transferGasUsed);
+            console.log(`Token transfer: ${transferGasUsed} gas`);
+            const approveAmount = ethers.parseEther("1000");
+            const approveTx = await token.connect(addr1).approve(addr2.address, approveAmount);
+            const approveReceipt = await approveTx.wait();
+            const approveGasUsed = Number(approveReceipt!.gasUsed);
+            trackGasUsage("trustToken_approve", approveGasUsed);
+            console.log(`Token approve: ${approveGasUsed} gas`);
+            const transferFromAmount = ethers.parseEther("100");
+            const transferFromTx = await token.connect(addr2).transferFrom(addr1.address, addr3.address, transferFromAmount);
+            const transferFromReceipt = await transferFromTx.wait();
+            const transferFromGasUsed = Number(transferFromReceipt!.gasUsed);
+            trackGasUsage("trustToken_transferFrom", transferFromGasUsed);
+            console.log(`Token transferFrom: ${transferFromGasUsed} gas`);
+        });
+    });
+
     after(function () {
         console.log("\n=== GAS USAGE SUMMARY ===");
+        console.log("Function Name | Min Gas | Max Gas | Avg Gas | Call Count");
+        console.log("-----------------------------------------------------------");
         const sortedFunctions = Object.keys(gasUsage).sort();
+
+        for (const functionName of sortedFunctions) {
+            const stats = getGasStats(functionName);
+            console.log(`${functionName.padEnd(30)} | ${stats.min.toString().padStart(7)} | ${stats.max.toString().padStart(7)} | ${stats.avg.toString().padStart(7)} | ${stats.count.toString().padStart(10)}`);
+        }
+        
+        console.log("\n=== FUNCTION CATEGORIES ===");
         const groupFunctions = sortedFunctions.filter(f => f.includes('createGroup') || f.includes('joinGroup'));
         console.log("\nGroup Management:");
 
@@ -423,12 +502,32 @@ describe("Trust Contract - Gas Usage Analysis", function () {
         
         const settlementFunctions = sortedFunctions.filter(f => f.includes('settleDebt'));
         console.log("\nDebt Settlement:");
-        
+
         settlementFunctions.forEach(f => {
             const stats = getGasStats(f);
             console.log(`  ${f}: ${stats.avg} gas (avg)`);
         });
         
+        console.log("\n=== OPTIMIZATION RECOMMENDATIONS ===");
+        
+        const highestGasFunctions = sortedFunctions
+            .map(f => ({ name: f, avg: getGasStats(f).avg }))
+            .sort((a, b) => b.avg - a.avg)
+            .slice(0, 5);
+        
+        console.log("\nHighest Gas Usage Functions (Top 5):");
+
+        highestGasFunctions.forEach((f, index) => {
+            console.log(`  ${index + 1}. ${f.name}: ${f.avg} gas`);
+        });
+        
+        const createGroupAvg = getGasStats('createGroup_2_members').avg;
+        const addExpenseAvg = getGasStats('addExpense_equalSplit_2_debtors').avg;
+        const settleDebtAvg = getGasStats('settleDebt_amount_50').avg;
+        console.log("\nTypical Operation Costs:");
+        console.log(`  Create small group: ~${createGroupAvg || 'N/A'} gas`);
+        console.log(`  Add simple expense: ~${addExpenseAvg || 'N/A'} gas`);
+        console.log(`  Settle debt: ~${settleDebtAvg || 'N/A'} gas`);
         console.log("\n=== END GAS ANALYSIS ===");
     });
 });
